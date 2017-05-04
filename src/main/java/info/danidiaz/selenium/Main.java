@@ -19,8 +19,8 @@ public class Main
 {
     private enum Strategy {
         GETTEXT,
+        INJECTJS,
         CELLBYCELL,
-        INJECTJS
     }
 
     public static void main( String[] args )
@@ -40,6 +40,12 @@ public class Main
 
             List<List<String>> contents = extract(strategy,driver,tableBody);
             
+/*            if (strategy.equals(Strategy.INJECTJS))
+            for (List<String> xs : contents) {
+                for (String x: xs) {
+                    System.out.println(x);
+                }
+            }*/
             System.out.println(String.format("rows %d cols %d", 
                                              contents.size(),
                                              contents.get(0).size()));
@@ -50,14 +56,14 @@ public class Main
         driver.quit();
     }
     
-    private static List<List<String>> extract(Strategy strategy,WebDriver driver,WebElement element) {
+    private static List<List<String>> extract(Strategy strategy,RemoteWebDriver driver,WebElement element) {
         switch (strategy) {
             case GETTEXT:
                 return extractGETTEXT(element);
             case CELLBYCELL:
                 return extractCELLBYCELL(element);
             case INJECTJS:
-                return extractINJECTJS(element);
+                return extractINJECTJS(driver,element);
         }
         return null;
     }
@@ -81,8 +87,23 @@ public class Main
                       .collect(Collectors.toList());
     }
 
-    private static List<List<String>> extractINJECTJS(WebElement element) {
-        return null;
+    @SuppressWarnings("unchecked")
+    private static List<List<String>> extractINJECTJS(RemoteWebDriver driver, WebElement element) {
+        final String js = 
+                "let xss = [];" +
+                "let rows = arguments[0].getElementsByTagName('tr');" +
+                "for (let ri = 0; ri < rows.length; ri++) { " +
+                "    let xs = [];" +
+                "    let row = rows[ri];" +
+                "    let cells = row.getElementsByTagName('td');" +
+                "    for (let ci = 0; ci < cells.length; ci++) { " +
+                "         let cell = cells[ci];" +
+                "         xs.push(cell.innerText);" +
+                "    };"+
+                "    xss.push(xs);" +
+                "}" +
+                "return xss;";
+        return (List<List<String>>)driver.executeScript(js, element);
     }
 
     private static WebDriverWait wait(WebDriver driver) {
